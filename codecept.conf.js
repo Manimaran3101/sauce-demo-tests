@@ -2,14 +2,14 @@ exports.config = {
   tests: './tests/*_test.js',
   output: './output',
 
-helpers: {
+  helpers: {
   Appium: {
     app: 'C:/Users/maran/sauce-demo-tests/apps/mda-2.2.0-25.apk',
 
     platform: 'Android',
-    deviceName: 'emulator-5554',
+    deviceName: '612645dd',
+    platformVersion: '15',
     automationName: 'UiAutomator2',
-
     appPackage: 'com.saucelabs.mydemoapp.android',
     appActivity: 'com.saucelabs.mydemoapp.android.view.activities.MainActivity',
     appWaitActivity: 'com.saucelabs.mydemoapp.android.view.activities.*',
