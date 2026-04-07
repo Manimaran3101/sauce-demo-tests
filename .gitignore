@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# APK files - too large to commit
+apps/
+
+# Test output - screenshots and reports
+output/
+
+# VS Code settings
+.vscode/
+
+# Auto-generated files
+package-lock.json
+jsconfig.json
+steps.d.ts
