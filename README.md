@@ -37,7 +37,7 @@ Before running tests, ensure the following are installed and configured:
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/Manimaran3101/sauce-demo-tests.git
 cd sauce-demo-tests
 ```
 
@@ -75,7 +75,7 @@ appium --base-path /wd/hub
 
 Keep this running in a separate terminal window.
 
-### 6. Run the tests
+### 6. Run all tests
 
 ```bash
 npx codeceptjs run --steps
@@ -95,11 +95,32 @@ npx codeceptjs run tests/login_test.js --steps
 |---|---|
 | Platform | Android |
 | Recommended API | 30 (Android 11) |
-| Device | Pixel 5 or Pixel 6 |
+| Device | Pixel 5 |
 | Automation Engine | UIAutomator2 |
 | Appium Server | localhost:4723 |
 
-> **Note:** Running on API 33+ (Android 13 and above) may trigger an Android App Compatibility popup due to the app's target SDK. This is handled automatically by the framework's `dismissPopup` helper.
+Before running tests, ensure the emulator is fully booted and showing the home screen. Wait for the status bar clock to appear before starting Appium or running tests.
+
+---
+
+## Project Structure
+
+```
+sauce-demo-tests/
+├── tests/
+│   ├── login_test.js
+│   ├── checkout_test.js
+│   └── checkout_validation_negative_test.js
+├── pages/
+│   └── CommonPage.js
+├── helpers/
+│   └── appHelper.js
+├── apps/                 ← APK file (gitignored)
+├── output/               ← screenshots (gitignored)
+├── codecept.conf.js
+├── package.json
+└── README.md
+```
 
 ---
 
@@ -122,7 +143,7 @@ npx codeceptjs run tests/login_test.js --steps
 
 | Scenario | Type | Expected Result |
 |---|---|---|
-| User cannot proceed without required details | Edge case | Stays on address page with validation |
+| User cannot proceed without entering required details | Negative | Validation error displayed, stays on address page |
 
 ---
 
@@ -142,17 +163,17 @@ We automate scenarios that meet all three criteria:
 |---|---|
 | Login with valid credentials | Entry point to all features — if this breaks, nothing works. High frequency, high risk. |
 | Locked out user error | Security-adjacent behaviour — must be verified on every release, stable and predictable. |
-| Full checkout flow | Revenue-critical path — any regression here directly impacts business. Complex enough to justify automation investment. |
+| Full checkout flow | Revenue-critical path — any regression here directly impacts business. |
 | Empty form submission | Regression-prone validation — developers frequently break this accidentally when modifying forms. |
 
 #### Not Automated — with specific reasoning for this app
 
 | Scenario | Why Not Automated |
 |---|---|
-| Network interruption during checkout | The demo app works fully offline and does not make real network calls — there is no network layer to interrupt. This test would pass regardless of network state and give false confidence. |
-| Input format validation | Exploratory testing revealed the app has no input validation — the name field accepts numbers, the expiry field accepts any string. Automating against broken validation would produce meaningless results. These are documented as quality findings below. |
-| Visual layout testing | Requires dedicated visual diffing tools such as Applitools. Out of scope for this framework but recommended as a next step. |
-| Biometric authentication | Cannot be reliably simulated on an emulator. Requires real device testing with manual verification. |
+| Network interruption during checkout | The demo app works fully offline and does not make real network calls — there is no network layer to interrupt. A test simulating network loss would pass regardless of connection state and give false confidence. |
+| Input format validation | The app has no format validation — name field accepts numbers, expiry accepts any string. Automating against non-existent rules would produce meaningless results. |
+| Visual layout testing | Requires dedicated visual diffing tools such as Applitools. Out of scope for this framework. |
+| Biometric authentication | Cannot be reliably simulated on an emulator. Requires real device testing. |
 
 ---
 
@@ -165,57 +186,37 @@ During framework development, exploratory testing revealed the following charact
 
 **Impact on automation:** The negative login test uses the locked out account rather than invalid credentials, since invalid credentials would incorrectly result in a successful login on this app.
 
-**Note for production context:** In a real application this would be a critical security defect. Authentication must validate credentials against a backend. For ExpressVPN specifically, where user privacy is the core product promise, this type of vulnerability would be a severity 1 finding.
-
 ### Finding 2 — App operates fully offline
 **Observation:** The app functions completely without a network connection. All product data, cart state, and checkout flows work offline with no backend dependency.
 
-**Impact on automation:** Network interruption testing — one of the suggested edge cases in the assessment — was not implemented because there is no network layer to interrupt. A test simulating network loss would pass regardless of connection state and provide false coverage.
+**Impact on automation:** Network interruption testing was not implemented because there is no network layer to interrupt. A test simulating network loss would pass regardless of connection state and provide false coverage.
 
-**Note for production context:** For a real mobile app, network interruption testing is critical — especially for a VPN client where connection stability is the core feature. The framework architecture supports adding network simulation tests when connected to a real backend.
+### Finding 3 — Input fields have partial validation
+**Observation:** Required fields are validated on form submission — submitting an empty form shows error messages such as "Please provide your full name." However, there is no format validation — the name field accepts numbers, the card expiry field accepts any string, and the card number field accepts any length.
 
-### Finding 3 — Input fields have no format validation
-**Observation:** The checkout address and payment forms accept any input in any field. The full name field accepts numbers. The card expiry field accepts any string format. The card number field accepts any length.
-
-**Impact on automation:** Validation tests were scoped to verifying that empty required fields prevent form submission — the one validation that does exist. Testing specific format rules was not possible as no format rules are enforced.
-
-**Note for production context:** In a real checkout flow, input validation is a key quality and security requirement. Card number format, expiry date validation, and postcode format checks would all be automated with specific test cases.
+**Impact on automation:** Validation tests are scoped to verifying that empty required fields prevent form submission. Format-specific tests were not added as no format rules are enforced.
 
 ---
 
 ## Framework Architecture
 
 ### Page Object Pattern
-Locators and page-specific actions are encapsulated in page classes under `pages/`. Tests never contain raw selectors — they call page methods instead. This means when a UI element changes, only one file needs updating.
+All locators and page-specific actions are encapsulated in `pages/CommonPage.js`. Tests never contain raw selectors — they call page methods instead. When a UI element changes, only one file needs updating.
 
 ### Shared Helpers
-Common functions like `dismissPopup`, `navigateToLogin`, and `login` live in `helpers/appHelper.js`. This eliminates duplication across test files and makes the suite easier to maintain.
+`helpers/appHelper.js` contains the `dismissPopup` function which handles the Android compatibility popup that appears on app launch. It attempts to find and dismiss the popup within 3 seconds and silently continues if the popup is not present — making tests resilient across different Android API levels.
 
 ### Selector Strategy
-We use `android=new UiSelector().resourceId()` selectors throughout. Resource IDs are stable, unique, and directly tied to the app's element identifiers — making tests resilient to UI changes like text or layout updates.
+Three selector types are used across the framework. `android=new UiSelector().resourceId()` is used for all interactive elements such as buttons and input fields — resource IDs are stable and directly tied to the app's element identifiers. `android=new UiSelector().description()` is used for accessibility-based selectors such as menu items. `android=new UiSelector().text()` and `textContains()` are used for assertions — verifying visible text, success messages, and error messages on screen.
 
 ### Synchronisation
-We use explicit waits (`waitForElement`) throughout — never hardcoded sleep timers. Each step waits for its target element to be present before interacting. This makes tests fast on good environments and resilient on slow ones.
-
----
-
-## Multi-Platform Strategy
-
-The framework is structured to support both Android and iOS:
-
-```
-config/
-├── android.conf.js     ← Android capabilities
-└── ios.conf.js         ← iOS capabilities (future)
-```
-
-To run on iOS, swap the helper configuration to point to XCUITest driver and update device capabilities. Test logic in `tests/` and `pages/` remains unchanged — only the config layer differs.
+Explicit waits (`waitForElement`) are used throughout — never hardcoded sleep timers except where a brief stabilisation pause is required after a screen transition. Each step waits for its target element to be present before interacting.
 
 ---
 
 ## CI/CD Integration
 
-Tests are designed to run in CI pipelines. Example GitHub Actions configuration:
+The framework is designed to integrate with CI pipelines. The example below shows the pipeline structure using GitHub Actions. In production, the local emulator setup would be replaced with a cloud device farm such as BrowserStack or Sauce Labs Real Devices, which provide Android devices accessible over the internet.
 
 ```yaml
 name: Mobile Automation Tests
@@ -247,42 +248,15 @@ jobs:
 
 ---
 
-## Biggest Risks in Mobile Automation
-
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Device and OS fragmentation | Tests pass on one device, fail on another | Define a priority device matrix, use cloud device farm for broader coverage |
-| Dynamic element IDs across builds | Selectors break after app updates | Use resource IDs over text-based selectors, review selectors on each release |
-| Emulator vs real device behaviour | Network, sensors, biometrics behave differently | Always validate critical flows on real devices before release |
-| Test environment instability | Flaky results unrelated to app quality | Use ephemeral test environments, isolate test data per run |
-| App state pollution between tests | One test affects the next | Implement proper setup and teardown, use logout between scenarios |
-| Android version compatibility | App behaviour differs across API levels | Test against minimum supported API and latest stable API |
-
----
-
-## Test Reporting
-
-HTML reports are generated automatically in `output/report.html` after each run.
-
-```bash
-# View report after running tests
-start output/report.html    # Windows
-open output/report.html     # Mac/Linux
-```
-
----
-
 ## What I Would Add Next
 
 Given more time, the next priorities would be:
 
-1. **iOS platform configuration** — add XCUITest driver config and iOS-specific page objects
-2. **Cloud device farm integration** — connect to BrowserStack or Sauce Labs for broader device coverage across API levels and manufacturers
-3. **Real backend network testing** — when connected to a real API, add network interruption tests using tools like Charles Proxy or Appium's network simulation capabilities
-4. **Input validation test suite** — once proper validation is implemented in the app, add format-specific test cases for all form fields
-5. **Parallel execution** — run Android and iOS suites simultaneously to reduce pipeline time
-6. **Quality metrics dashboard** — track flakiness rate, coverage of critical paths, and mean time to feedback over time
-7. **Performance benchmarking** — measure app launch time and screen transition times as quality metrics
+1. **iOS platform configuration** — add XCUITest driver config and iOS-specific capabilities. Test logic in `tests/` and `pages/` would remain unchanged — only the configuration layer differs.
+2. **Cloud device farm integration** — connect to BrowserStack or Sauce Labs for broader device coverage across manufacturers and API levels.
+3. **CI/CD pipeline** — integrate with GitHub Actions using a cloud device provider to run tests automatically on every pull request.
+4. **Test reporting** — add Allure reports for visual test results, history tracking, and flakiness detection.
+5. **Network interruption tests** — when connected to a real VPN backend, simulate connection drops during critical flows to validate recovery behaviour.
 
 ---
 
