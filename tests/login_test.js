@@ -1,4 +1,5 @@
 const CommonPage = require('../pages/CommonPage');
+const { users } = require('../data/testData');
 
 Feature('Login');
 
@@ -8,14 +9,14 @@ Before(({ I }) => {
   commonPage = new CommonPage(I);
 });
 
-Scenario('Successful login with valid credentials', async ({ I }) => {
+Scenario('Successful login with valid credentials', async () => {
   await commonPage.navigateToLogin();
-  await commonPage.login('bod@example.com', '10203040');
+  await commonPage.login(users.standard);
   await commonPage.verifySuccessfulLogin();
 });
 
-Scenario('Locked out user cannot login', async ({ I }) => {
+Scenario('Locked out user cannot login', async () => {
   await commonPage.navigateToLogin();
-  await commonPage.login('alice@example.com', '10203040');
+  await commonPage.login(users.lockedOut);
   await commonPage.verifyLoginError();
 });

@@ -1,4 +1,5 @@
 const CommonPage = require('../pages/CommonPage');
+const { users } = require('../data/testData');
 
 Feature('Checkout Flow');
 
@@ -8,9 +9,9 @@ Before(({ I }) => {
   commonPage = new CommonPage(I);
 });
 
-Scenario('User can complete checkout successfully', async ({ I }) => {
+Scenario('User can complete checkout successfully', async () => {
   await commonPage.navigateToLogin();
-  await commonPage.login('bod@example.com', '10203040');
+  await commonPage.login(users.standard);
   await commonPage.addProductToCart();
   await commonPage.goToCartAndCheckout();
   await commonPage.enterAddress();
