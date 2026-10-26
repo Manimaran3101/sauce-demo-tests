@@ -11,6 +11,5 @@ output/
 .vscode/
 
 # Auto-generated files
-package-lock.json
 jsconfig.json
 steps.d.ts

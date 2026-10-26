@@ -1,17 +1,24 @@
 {
   "name": "sauce-demo-tests",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "CodeceptJS + Appium tests for the Sauce Labs My Demo App on Android",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "codeceptjs run --steps",
+    "test:report": "codeceptjs run --reporter mocha-multi"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "codeceptjs",
+    "appium",
+    "android",
+    "mobile-testing"
+  ],
+  "author": "Manimaran Murugan",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
     "codeceptjs": "^3.5.4",
+    "mocha-multi": "^1.1.7",
+    "mochawesome": "^8.1.1",
     "webdriverio": "^7.25.0"
   }
 }
